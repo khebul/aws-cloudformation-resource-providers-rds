@@ -1199,6 +1199,42 @@ public class UpdateHandlerTest extends AbstractHandlerTest {
     }
 
     @Test
+    public void handleRequest_StorageFullWhenOriginalStorageSizeIsImplicit() {
+        final CallbackContext context = new CallbackContext();
+        context.setUpdated(true);
+        context.setRebooted(true);
+        context.setUpdatedRoles(true);
+
+        final Queue<DBInstance> transitions = new ConcurrentLinkedQueue<>();
+
+        transitions.add(DB_INSTANCE_STORAGE_FULL);
+        transitions.add(DB_INSTANCE_ACTIVE);
+        transitions.add(DB_INSTANCE_ACTIVE); // one extra for the read handler
+
+        test_handleRequest_base(
+                context,
+                transitions::remove,
+                () -> RESOURCE_MODEL_BLDR().allocatedStorage(null).build(),
+                () -> RESOURCE_MODEL_BLDR().
+                        allocatedStorage(ALLOCATED_STORAGE_INCR.toString()).build(),
+                expectSuccess()
+        );
+
+        verify(rdsProxy.client(), times(3)).describeDBInstances(any(DescribeDbInstancesRequest.class));
+
+        ArgumentCaptor<ModifyDbInstanceRequest> captor = ArgumentCaptor.forClass(ModifyDbInstanceRequest.class);
+        verify(rdsProxy.client()).modifyDBInstance(captor.capture());
+
+        final ModifyDbInstanceRequest expected = ModifyDbInstanceRequest.builder()
+                .dbInstanceIdentifier(DB_INSTANCE_IDENTIFIER_NON_EMPTY)
+                .allocatedStorage(ALLOCATED_STORAGE_INCR)
+                .applyImmediately(true)
+                .build();
+
+        Assertions.assertThat(captor.getValue().equalsBySdkFields(expected)).isTrue();
+    }
+
+    @Test
     public void handleRequest_StorageIsNotFull() {
         final CallbackContext context = new CallbackContext();
         context.setUpdated(true);

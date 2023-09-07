@@ -331,7 +331,9 @@ public class UpdateHandler extends BaseHandlerStd {
     ) {
         return BooleanUtils.isNotTrue(request.getRollback()) &&
                 request.getPreviousResourceState() != null &&
-                Translator.getAllocatedStorage(request.getDesiredResourceState()) > Translator.getAllocatedStorage(request.getPreviousResourceState());
+                Translator.getAllocatedStorage(request.getDesiredResourceState()) != null &&
+                (Translator.getAllocatedStorage(request.getPreviousResourceState()) == null ||
+                Translator.getAllocatedStorage(request.getDesiredResourceState()) > Translator.getAllocatedStorage(request.getPreviousResourceState()));
     }
 
     private boolean shouldAllocateStorage(
